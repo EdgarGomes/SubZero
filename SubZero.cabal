@@ -1,0 +1,28 @@
+name:           SubZero
+version:        0.0.1
+cabal-version:  >= 1.4
+build-type:     Simple
+license:        GPL-3
+license-file:   LICENSE
+maintainer:     Edgar Gomes de Araujo
+stability:      experimental
+homepage:
+package-url:
+bug-reports:    talktoedgar@gmail.com
+synopsis:       Library for subdivision surfaces
+description: Library to create and transforms smooth subdivision surfaces
+  - Based on Catmull-Clark rules. But extendable for others schemes
+  - Full crease/corne edge/vertex 
+category:       Math
+author:         Edgar Gomes de Araujo
+
+Library
+  build-depends:  base       -any
+                , containers >= 0.4
+                , haskell98  -any
+                , vector     >= 0.9
+                -- , Hammer     -any
+  exposed-modules:  SubZero.Math.SubSurf
+  exposed:        True
+  buildable:      True
+  hs-source-dirs: src
