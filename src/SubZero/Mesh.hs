@@ -1,4 +1,9 @@
-module SubZero.Math.SubSurf
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+
+module SubZero.Mesh
+       ( buildMesh
+       , makepatch)
 where
 
   
@@ -10,63 +15,14 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IS
-import Maybe
-import Data.Vector (Vector)
+import Data.Maybe
+import Data.Vector (Vector, (!), ifoldl')
 import qualified Data.Vector as Vec
-  
-type Point3D = (Double, Double, Double)
-type PatchID = Int
 
-newtype PatchPos = PatchPos (Int,Int)  deriving (Show, Eq)
+import Control.Monad
 
-data VertexConn a = OnRight a
-                  | OnLeft a
-                  | BothLR a a
-                  | JustOne a
-                  | None
-                  deriving (Show, Eq)
-                           
-data Crease = NoCrease
-            | Crease
-            | Corner
-            deriving (Show, Eq)
-
--- | The Patch data defines the central triangular patch (a triangular matrix)
--- and the first neighbours for each vertex and edge.                      
--- 
---         (1, 1)
---           /\ 
---          /  \
---         /    \
---      (n,1)__(n,n)
-data Patch a = TriPatch 
-           { level     ::Int                   -- ^ Level of subdivision
-           , nv11      ::VertexConn (Vector a) -- ^ Neighbors of vertex (1,1)
-           , ne11nn    ::Maybe (Vector a)      -- ^ Neighbors of edge (1,1) -- (n,n)
-           , nvnn      ::VertexConn (Vector a) -- ^ Neighbors of vertex (n,n)
-           , nennn1    ::Maybe (Vector a)      -- ^ Neighbors of edge (n,n) -- (n,1) 
-           , nvn1      ::VertexConn (Vector a) -- ^ Neighbors of vertex (n,1)
-           , nen111    ::Maybe (Vector a)      -- ^ Neighbors of edge (n,1) -- (1,1)
-  
-           , triMatrix ::Vector a -- ^ Triangular matrix
-           } deriving (Show, Eq)                     
-                      
-type Mesh = Vector (Patch Int)
-
-sn::Int -> Int
-sn n = n*(1+n) `div` 2
-
-ix::PatchPos -> Int
-ix (PatchPos (i,j)) = sn (j-1) + i 
-                                   
-pos::Int -> PatchPos
-pos ix = let (j, total) = func 0 in PatchPos (ix - total, j)
-  where
-    func n
-      | sn (n+1) > ix = (n, sn n)
-      | otherwise     = func (n+1)
-
-
+import Hammer.Math.Vector hiding (Vector)
+import SubZero.Base
 
 
 newtype EdgeID = EdgeID (Int, Int) deriving (Show, Eq)
@@ -164,20 +120,16 @@ makepatch (vs, es) p@(a,b,c) = patch
       OnRight x  -> OnRight $ Vec.fromList x
       BothLR a b -> BothLR (Vec.fromList a) (Vec.fromList b)
       JustOne x  -> JustOne $ Vec.fromList x
-      _         -> None
+      _          -> None
 
     patch = TriPatch { level     = 0
-                     , nv11      = toVec v1
-                     , ne11nn    = fmap Vec.singleton e12
+                     , nv00      = toVec v1
+                     , ne00nn    = fmap Vec.singleton e12
                      , nvnn      = toVec v2
-                     , nennn1    = fmap Vec.singleton e23
-                     , nvn1      = toVec v3
-                     , nen111    = fmap Vec.singleton e31
-                     , triMatrix = Vec.fromList [a,b,c] }
+                     , nennn0    = fmap Vec.singleton e23
+                     , nvn0      = toVec v3
+                     , nen000    = fmap Vec.singleton e31
+                     , triMatrix = Vec.fromList [a,c,b] }
 
 
 
--- test case
-testMesh = buildMesh [(1,5,2),(5,6,2),(5,8,6),(6,8,11),(6,11,13),(3,13,11)
-                     ,(13,3,12),(10,13,12),(7,10,12),(12,4,7),(4,12,9)
-                     ,(2,10,7),(2,7,1),(7,15,14),(1,7,14),(7,4,15)]
