@@ -124,7 +124,7 @@ evalPatch table p =
     eval = Vec.map (table!)
     
     
-renderPatch::Patch Vec3 -> VTK
+renderPatch::Patch Vec3 -> VTK Point3D
 renderPatch patch@(TriPatch {..}) = let
   ts = ifoldl' func Vec.empty triMatrix
   isInPatch (PatchPos (i,j)) = let 
