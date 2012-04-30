@@ -16,14 +16,14 @@ import SubZero.Mesh
 
 subdivide::Patch Point3D -> Patch Point3D
 subdivide patch@(TriPatch {..}) =
-  TriPatch { level     = level + 1
-           , nv00      = new_nv00
-           , ne00nn    = new_ne00nn
-           , nvnn      = new_nvnn
-           , nennn0    = new_nennn0
-           , nvn0      = new_nvn0
-           , nen000    = new_nen000
-           , triMatrix = newpatch }
+  patch { level     = level + 1
+        , nv00      = new_nv00
+        , ne00nn    = new_ne00nn
+        , nvnn      = new_nvnn
+        , nennn0    = new_nennn0
+        , nvn0      = new_nvn0
+        , nen000    = new_nen000
+        , triMatrix = newpatch }
   where
     newSize    = triMatrixSize (level + 1)
     newN       = maxIx (1 + level)
@@ -60,20 +60,20 @@ newVertex vertex l v r = case v of
   JustOne x    -> JustOne $ calcEdge l x r
   None         -> None
   where
-    calcEdge l vec r = Vec.imap func vec
-      where
-        func i e = 
-          let ea = getNode (i-1)
-              eb = getNode (i+1)
-              p = if isJust ea && isJust eb
-                  then liftM2 (calcNormEdge vertex e) ea eb
-                  else return $ calcCreaseEdge vertex e
-          in checkNode p 
+    calcEdge l vec r = let
+      func i e = 
+        let ea = getNode (i-1)
+            eb = getNode (i+1)
+            p = if isJust ea && isJust eb
+                then liftM2 (calcNormEdge vertex e) ea eb
+                else return $ calcCreaseEdge vertex e
+        in checkNode p 
                   
-        getNode i
-          | i < 0               = fmap Vec.last l
-          | i >= Vec.length vec = fmap Vec.head r
-          | otherwise           = return $ vec ! i
+      getNode i
+        | i < 0               = fmap Vec.last l
+        | i >= Vec.length vec = fmap Vec.head r
+        | otherwise           = return $ vec ! i
+      in Vec.imap func vec
 
 
 calcNormEdge e1 e2 ea eb = (3 *& (e1 &+ e2) &+ ea &+ eb) &* (1/8)
@@ -102,9 +102,9 @@ newEdge patch ij
 
 updateNode::Patch Point3D -> PatchPos -> Point3D
 updateNode patch@(TriPatch {..}) ij
-  | i == 0 && j == 0 = getVertex nen000 (PatchPos (1,0))     nv00 ne00nn (PatchPos (1,1))
-  | i == n && j == n = getVertex ne00nn (PatchPos (n-1,n-1)) nvnn nennn0 (PatchPos (n,n-1))
-  | i == n && j == 0 = getVertex nennn0 (PatchPos (n,1))     nvn0 nen000 (PatchPos (n-1,0))
+  | i == 0 && j == 0 = if v00Type == Crease then checkNode $ getNode patch $ oldij else getVertex nen000 (PatchPos (1,0))     nv00 ne00nn (PatchPos (1,1))
+  | i == n && j == n = if vnnType == Crease then checkNode $ getNode patch $ oldij else getVertex ne00nn (PatchPos (n-1,n-1)) nvnn nennn0 (PatchPos (n,n-1))
+  | i == n && j == 0 = if vn0Type == Crease then checkNode $ getNode patch $ oldij else getVertex nennn0 (PatchPos (n,1))     nvn0 nen000 (PatchPos (n-1,0))
   
   | i == j           = if isJust ne00nn then calcNode getAll else calcCreaseNode (PatchPos (1,1))
   | i == n           = if isJust nennn0 then calcNode getAll else calcCreaseNode (PatchPos (0,1))

@@ -78,8 +78,8 @@ addTriangle (vs, es) t@(a,b,c) = (vs', es')
 -- regarding the sequence of its neighbours according to the clockwise direction.
 -- OBS: - It doesn't work for mesh with holes
 --      - It doesn't consider disjoints by one vertex (e.g. |><|)
-makepatch::(VertexSet, EdgeSet) -> (Int, Int, Int) -> Patch Int
-makepatch (vs, es) p@(a,b,c) = patch
+makepatch::(VertexSet, EdgeSet) -> [Int] -> (Int, Int, Int) -> Patch Int
+makepatch (vs, es) creases p@(a,b,c) = patch
   where
     isMember x = x == a || x == b || x == c
     
@@ -122,13 +122,25 @@ makepatch (vs, es) p@(a,b,c) = patch
       JustOne x  -> JustOne $ Vec.fromList x
       _          -> None
 
+    isCrease x = if x `elem` creases then Crease else NoCrease
+
     patch = TriPatch { level     = 0
+                                   
                      , nv00      = toVec v1
+                     , v00Type   = isCrease a
+                                                                               
                      , ne00nn    = fmap Vec.singleton e12
+                                                                  
                      , nvnn      = toVec v2
+                     , vnnType   = isCrease b
+                                                                               
                      , nennn0    = fmap Vec.singleton e23
+                                                                 
                      , nvn0      = toVec v3
+                     , vn0Type   = isCrease c
+                                                                               
                      , nen000    = fmap Vec.singleton e31
+                                                                 
                      , triMatrix = Vec.fromList [a,c,b] }
 
 

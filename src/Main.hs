@@ -72,8 +72,8 @@ renderTest out n = writeMultiVTKfile (text2Path out) (renderTest patchs')
     
     ts        = [(1,2,0),(2,3,0),(3,4,0),(4,5,0),(5,1,0)]
     mesh      = buildMesh ts
-    positions = Vec.fromList [Vec3 1 1 1, Vec3 0 0 0, Vec3 0 2 0, Vec3 1 2 0, Vec3 2 1 0, Vec3 1 0 0]
-    patchs    = Vec.map (evalPatch positions . makepatch mesh) (Vec.fromList ts)
+    positions = Vec.fromList [Vec3 1 1 1, Vec3 0 0 0.5, Vec3 0 2 0, Vec3 1 2 0, Vec3 2 1 0, Vec3 1 0 0]
+    patchs    = Vec.map (evalPatch positions . makepatch mesh [1, 3, 5]) (Vec.fromList ts)
     
     renderTest = Vec.map renderPatch 
     subdAll    = Vec.map subdivide

@@ -57,15 +57,18 @@ data Crease = NoCrease
 --         /    \
 --      (n,0)__(n,n)
 data Patch a = TriPatch 
-           { level     ::Int                       -- ^ Level of subdivision
-           , nv00      ::VertexConn (Vector a) -- ^ Neighbors of vertex (0,0)
-           , ne00nn    ::Maybe (Vector a)      -- ^ Neighbors of edge (0,0) -- (n,n)
-           , nvnn      ::VertexConn (Vector a) -- ^ Neighbors of vertex (n,n)
-           , nennn0    ::Maybe (Vector a)      -- ^ Neighbors of edge (n,n) -- (n,0)
-           , nvn0      ::VertexConn (Vector a) -- ^ Neighbors of vertex (n,0)
-           , nen000    ::Maybe (Vector a)      -- ^ Neighbors of edge (n,0) -- (0,0)
+           { level     :: Int                   -- ^ Level of subdivision
+           , nv00      :: VertexConn (Vector a) -- ^ Neighbors of vertex (0,0)
+           , v00Type   :: Crease 
+           , ne00nn    :: Maybe (Vector a)      -- ^ Neighbors of edge (0,0) -- (n,n)
+           , nvnn      :: VertexConn (Vector a) -- ^ Neighbors of vertex (n,n)
+           , vnnType   :: Crease 
+           , nennn0    :: Maybe (Vector a)      -- ^ Neighbors of edge (n,n) -- (n,0)
+           , nvn0      :: VertexConn (Vector a) -- ^ Neighbors of vertex (n,0)
+           , vn0Type   :: Crease 
+           , nen000    :: Maybe (Vector a)      -- ^ Neighbors of edge (n,0) -- (0,0)
   
-           , triMatrix ::Vec.Vector a              -- ^ Triangular matrix
+           , triMatrix ::Vec.Vector a          -- ^ Triangular matrix
            } deriving (Show, Eq)                     
                       
 
@@ -112,14 +115,14 @@ prevNode (PatchPos (i,j)) = let f x = x `div` 2 in PatchPos (f i, f j)
 
 evalPatch::Vector Point3D -> Patch Int -> Patch Point3D
 evalPatch table p =
-  TriPatch { level     = level p
-           , nv00      = fmap eval $ nv00 p
-           , ne00nn    = fmap eval $ ne00nn p
-           , nvnn      = fmap eval $ nvnn p
-           , nennn0    = fmap eval $ nennn0 p
-           , nvn0      = fmap eval $ nvn0 p
-           , nen000    = fmap eval $ nen000 p
-           , triMatrix = eval $ triMatrix p }
+  p { level     = level p
+    , nv00      = fmap eval $ nv00 p
+    , ne00nn    = fmap eval $ ne00nn p
+    , nvnn      = fmap eval $ nvnn p
+    , nennn0    = fmap eval $ nennn0 p
+    , nvn0      = fmap eval $ nvn0 p
+    , nen000    = fmap eval $ nen000 p
+    , triMatrix = eval $ triMatrix p }
   where
     eval = Vec.map (table!)
     
