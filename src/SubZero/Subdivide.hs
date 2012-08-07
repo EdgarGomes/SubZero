@@ -172,7 +172,7 @@ checkNode mn = case mn of
 getErr ij = error ("[SubZero] The position " ++ show ij ++ " is out of bound!")
 
 
-getNode::Patch Point3D -> PatchPos -> Maybe Point3D
+getNode::Patch a -> PatchPos -> Maybe a
 getNode patch@(TriPatch {..}) ij@(PatchPos (i,j))
   | i >=  0  && i < n && j == i+1 = ne00nn !|! (i) 
   | i == n+1 && j > 0 && j <= n   = nennn0 !|! (n-j)
@@ -187,7 +187,7 @@ getNode patch@(TriPatch {..}) ij@(PatchPos (i,j))
     vec !|! ix = fmap (!ix) vec
 
 
-getNodeExtra::Patch Point3D -> PatchPos -> Maybe Point3D
+getNodeExtra::Patch a -> PatchPos -> Maybe a
 getNodeExtra patch@(TriPatch {..}) ij@(PatchPos (i,j))  
   | i == -1  && j == 0   = snd $ getLR nv00
   | i == n   && j == n+1 = fst $ getLR nvnn
@@ -199,7 +199,7 @@ getNodeExtra patch@(TriPatch {..}) ij@(PatchPos (i,j))
   where    
     n = maxIx level
     
-    getLR::VertexConn (Vector Point3D) -> (Maybe Point3D, Maybe Point3D)
+    getLR::VertexConn (Vector a) -> (Maybe a, Maybe a)
     getLR v = case v of
       OnRight x    -> (Nothing,              return $ Vec.last x )
       OnLeft  x    -> (return $ Vec.head x,  Nothing             )
