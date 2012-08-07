@@ -28,6 +28,8 @@ Library
     exposed-modules:  SubZero.Base
                     , SubZero.Mesh
                     , SubZero.Subdivide
+                    , SubZero.VertexEval
+
     exposed:          True
     buildable:        True
     hs-source-dirs:   src

@@ -2,8 +2,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module SubZero.Mesh
-       ( buildMesh
-       , makepatch)
 where
 
   

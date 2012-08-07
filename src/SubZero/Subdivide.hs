@@ -2,7 +2,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module SubZero.Subdivide
-       (subdivide)
+       ( subdivide
+       , getNode )
 where
 
 import Control.Monad  
