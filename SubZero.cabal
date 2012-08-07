@@ -21,9 +21,9 @@ Flag test
     Default:          True
 
 Library
-    build-depends:    base       <= 5
-                    , containers >= 0.4
-                    , vector     >= 0.9
+    build-depends:    base       >= 4   && < 5
+                    , containers >= 0.4 && < 0.5
+                    , vector     >= 0.9 && < 0.10
                     , hammer     == 0.1.1
     exposed-modules:  SubZero.Base
                     , SubZero.Mesh
@@ -38,7 +38,7 @@ Executable tester
     hs-source-dirs:   src
     Main-Is:          Main.hs
     Buildable:        True
-    Build-depends:    base       <= 5
+    Build-depends:    base       >= 4   && < 5
                     , QuickCheck >= 2.4 && < 2.5
-                    , containers >= 0.4
-                    , vector     >= 0.9
+                    , containers >= 0.4 && < 0.5
+                    , vector     >= 0.9 && < 0.10
