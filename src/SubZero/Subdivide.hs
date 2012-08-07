@@ -102,9 +102,15 @@ newEdge patch ij
 
 updateNode::Patch Point3D -> PatchPos -> Point3D
 updateNode patch@(TriPatch {..}) ij
-  | i == 0 && j == 0 = if v00Type == Crease then checkNode $ getNode patch $ oldij else getVertex nen000 (PatchPos (1,0))     nv00 ne00nn (PatchPos (1,1))
-  | i == n && j == n = if vnnType == Crease then checkNode $ getNode patch $ oldij else getVertex ne00nn (PatchPos (n-1,n-1)) nvnn nennn0 (PatchPos (n,n-1))
-  | i == n && j == 0 = if vn0Type == Crease then checkNode $ getNode patch $ oldij else getVertex nennn0 (PatchPos (n,1))     nvn0 nen000 (PatchPos (n-1,0))
+  | i == 0 && j == 0 = if v00Type == Corner
+                       then checkNode $ getNode patch oldij
+                       else getVertex nen000 (PatchPos (1,0))     nv00 ne00nn (PatchPos (1,1))
+  | i == n && j == n = if vnnType == Corner
+                       then checkNode $ getNode patch oldij
+                       else getVertex ne00nn (PatchPos (n-1,n-1)) nvnn nennn0 (PatchPos (n,n-1))
+  | i == n && j == 0 = if vn0Type == Corner
+                       then checkNode $ getNode patch oldij
+                       else getVertex nennn0 (PatchPos (n,1))     nvn0 nen000 (PatchPos (n-1,0))
   
   | i == j           = if isJust ne00nn then calcNode getAll else calcCreaseNode (PatchPos (1,1))
   | i == n           = if isJust nennn0 then calcNode getAll else calcCreaseNode (PatchPos (0,1))

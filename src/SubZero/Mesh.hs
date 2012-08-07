@@ -122,7 +122,7 @@ makepatch (vs, es) creases p@(a,b,c) = patch
       JustOne x  -> JustOne $ Vec.fromList x
       _          -> None
 
-    isCrease x = if x `elem` creases then Crease else NoCrease
+    isCrease x = if x `elem` creases then Corner else Smooth
 
     patch = TriPatch { level     = 0
                                    

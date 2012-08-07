@@ -43,10 +43,9 @@ instance Functor VertexConn where
      JustOne x    -> JustOne (f x)
      None         -> None
 
-data Crease = NoCrease
-            | Crease
-            | Corner
-            deriving (Show, Eq)
+data VertexType = Smooth
+                | Corner
+                deriving (Show, Eq)
 
 -- | The Patch data defines the central triangular patch (a triangular matrix)
 -- and the first neighbours for each vertex and edge.                      
@@ -59,13 +58,13 @@ data Crease = NoCrease
 data Patch a = TriPatch 
            { level     :: Int                   -- ^ Level of subdivision
            , nv00      :: VertexConn (Vector a) -- ^ Neighbors of vertex (0,0)
-           , v00Type   :: Crease 
+           , v00Type   :: VertexType 
            , ne00nn    :: Maybe (Vector a)      -- ^ Neighbors of edge (0,0) -- (n,n)
            , nvnn      :: VertexConn (Vector a) -- ^ Neighbors of vertex (n,n)
-           , vnnType   :: Crease 
+           , vnnType   :: VertexType 
            , nennn0    :: Maybe (Vector a)      -- ^ Neighbors of edge (n,n) -- (n,0)
            , nvn0      :: VertexConn (Vector a) -- ^ Neighbors of vertex (n,0)
-           , vn0Type   :: Crease 
+           , vn0Type   :: VertexType 
            , nen000    :: Maybe (Vector a)      -- ^ Neighbors of edge (n,0) -- (0,0)
   
            , triMatrix ::Vec.Vector a          -- ^ Triangular matrix
