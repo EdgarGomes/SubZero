@@ -125,9 +125,9 @@ evalPatch table p =
   where
     eval = Vec.map (table!)
     
-    
-renderPatch::Patch Vec3 -> VTK Point3D
-renderPatch patch@(TriPatch {..}) = let
+-- | Extract all triangles from a subdivision patch.    
+patchToTriangles::Patch a -> (Vector (Int,Int,Int), Vector a)
+patchToTriangles patch@(TriPatch {..}) = let
   ts = ifoldl' func Vec.empty triMatrix
   isInPatch (PatchPos (i,j)) = let 
     n = maxIx level
@@ -142,6 +142,10 @@ renderPatch patch@(TriPatch {..}) = let
          then Vec.singleton (ix a, i, ix b)
          else Vec.empty
     in acc Vec.++ mkT t1a t1b Vec.++ mkT t2a t2b
-    
+  in (ts, triMatrix)
+
+-- | Prepare a subdivision patch for rendering.
+renderPatch::Patch Vec3 -> VTK Point3D
+renderPatch patch = let
+  (ts, triMatrix) = patchToTriangles patch
   in mkUGVTK "patch" triMatrix ts
-    
