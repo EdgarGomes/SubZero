@@ -1,6 +1,6 @@
 name:           SubZero
 version:        0.1.0
-cabal-version:  >= 1.4
+cabal-version:  >= 1.8
 build-type:     Simple
 license:        GPL-3
 license-file:   LICENSE
@@ -18,27 +18,39 @@ author:         Edgar Gomes de Araujo
 
 Flag test
     Description:      Build the test suite, including an executable to run it.
-    Default:          True
+    Default:          False
 
 Library
-    build-depends:    base       >= 4   && < 5
-                    , containers >= 0.4 && < 0.5
-                    , vector     >= 0.9 && < 0.10
-                    , hammer     == 0.1.1
-    exposed-modules:  SubZero.Base
-                    , SubZero.Mesh
-                    , SubZero.Subdivide
-                    , SubZero.VertexEval
+    ghc-options: -Wall
+                 -O2
+                 -funbox-strict-fields
+                 -fwarn-tabs
+                 ---eventlog
+                 -auto-all                       
+                 -caf-all
+
+    build-depends:    base       == 4.*
+                    , containers == 0.5.*
+                    , vector     == 0.10.*
+                    , primitive  == 0.5.*
+                    , hammer     == 0.2.*
+
+    exposed-modules:  SubZero.SubOne
+                    , SubZero.SubTwo
 
     exposed:          True
     buildable:        True
     hs-source-dirs:   src
 
-Executable tester
-    hs-source-dirs:   src
+
+Executable SubZero-test
+    hs-source-dirs:   profile
     Main-Is:          Main.hs
-    Buildable:        True
-    Build-depends:    base       >= 4   && < 5
-                    , QuickCheck >= 2.4 && < 2.5
-                    , containers >= 0.4 && < 0.5
-                    , vector     >= 0.9 && < 0.10
+    Build-depends:    SubZero
+                    , base       == 4.*
+                    , hammer     == 0.2.*
+                    , vector     == 0.10.*
+    if flag(test)
+       Buildable:     True
+    else
+       Buildable:     False
