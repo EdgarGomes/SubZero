@@ -14,8 +14,9 @@ module SubZero.SubTwo
        , subTwoNormals 
        , subTwoLimit 
 
-       --, buildMesh
-       --, MeshConn (..)
+       , buildMesh
+       , MeshConn
+       , meshFaces
        ) where
 
 import           Data.Function
@@ -66,6 +67,10 @@ type VertexConn = (Vector EdgeID)
 type EdgeConn   = (Maybe FaceID, Maybe FaceID, VertexID, VertexID)
 type FaceConn   = (VertexID, VertexID, VertexID)
 
+
+-- | Data structure for subdivision surface based on:
+-- "A Mesh Data Structure for Rendering and Subdivision"
+-- but with the edges also pointing back to their vertexs.
 data MeshConn =
   MeshConn
   { vertexType :: Vector VertexType
@@ -124,6 +129,12 @@ instance TableAccess VertexType where
 
 -- ==========================================================================================
 
+-- | Function to extract array of faces from a @MeshConn@
+meshFaces :: MeshConn -> Vector (Int, Int, Int)
+meshFaces = let
+  foo (a, b, c) = (unVertexID a, unVertexID b, unVertexID c)
+  in V.map foo . faceConn
+
 mkSubTwo :: Vector Vec3 -> [(Int, Int, Int)] -> [Int] -> Maybe SubTwo
 mkSubTwo ps ts cs
   | np /= nm  = Nothing
@@ -154,8 +165,14 @@ subdivideTwoConn ms@MeshConn{..} = let
   newfsize = 4 * fsize
   -- Each edge gives rise to 1 new vertex
   newvsize = vsize + esize
-  -- Lower part reserved for edge split (1 -> 2)
-  -- Upper part reserved for new edges 3 per face
+  -- Lower part (2 x  num. of edges) is reserved for edge splitting.
+  -- Each edge of a face (triangle) is split in two edge by the creation of
+  -- a new vertex.
+  -- 
+  -- Upper part reserved for internal new edges. Each face will give
+  -- rise to 4 new faces by adding a new internal face. This is done
+  -- by connecting each new vertex pairwise and, therefore adding 3
+  -- new internal edges.
   newesize = 2 * esize + 3 * fsize
 
   addvsize = esize
@@ -173,25 +190,43 @@ subdivideTwoConn ms@MeshConn{..} = let
        -> FaceID
        -> (VertexID, VertexID, VertexID)
        -> m ()
-  addF mf me mv fid unsortF= let
-    face@(v1, v2, v3) = fast3DSort unsortF
-    (e12, e23, e31) = case findEdge face ms of
-      Just e3s -> e3s
-      _        -> error "[SubTwo] Face with no edges."
+  addF mf me mv fid face@(v1, v2, v3) = let
+    -- The sort face's index were remove. It seems unnecessary and
+    -- caused normal flipping (CW <-> CCW) on the triangular faces.
+    errMsg = error $ "[SubTwo] I can't find edge of this face. It should be here." ++ show face
+    (e12, e23, e31) = maybe errMsg id (findEdge face ms)
+
+    -- Existent vertexs are updated and a new vertex is created for
+    -- each new edge. Therefore the new vertex are added after them
+    -- in the array. The new pos is uniquely defined as described
+    -- bellow (size of the old vertex array + the position of the
+    -- edge that creates the new vertex) 
     v12 = VertexID $ vsize + unEdgeID e12
     v23 = VertexID $ vsize + unEdgeID e23
     v31 = VertexID $ vsize + unEdgeID e31
+
+    -- Each face creates 4 new faces that are placed in blocks
+    -- Where:
+    --   f1 - is the face connected to v1
+    --   f2 - is the face connected to v2
+    --   f3 - is the face connected to v3
+    --   f4 - is the face in center
     f_1 = 4 * fid
     f_2 = 1 + f_1
     f_3 = 2 + f_1
     f_4 = 3 + f_1
+  
+    -- Each face creates 3 new internal edges that are placed in
+    -- blocks of 3 at the upper part of the array (after eoffset).  
     newe1 = EdgeID $ eoffset + 3 * (unFaceID fid)
     newe2 = newe1 + 1
     newe3 = newe2 + 1
+    
     in do
-      writeM mf f_1 (v1,  v31, v12) 
-      writeM mf f_2 (v2,  v12, v23) 
-      writeM mf f_3 (v3,  v23, v31) 
+      -- keep clockwise convention v1 -> v2 -> v3
+      writeM mf f_1 (v1,  v12, v31) 
+      writeM mf f_2 (v2,  v23, v12) 
+      writeM mf f_3 (v3,  v31, v23) 
       writeM mf f_4 (v12, v23, v31)
 
       writeM me newe1 (Just $ f_1, Just $ f_4, v31, v12)
@@ -214,31 +249,36 @@ subdivideTwoConn ms@MeshConn{..} = let
        -> EdgeID
        -> EdgeConn
        -> m ()
-  addE me mv eid (fida, fidb, vid1, vid2) = let
-    v12 = VertexID $ vsize + unEdgeID eid
+  addE me mv eid (fida, fidb, vidA, vidB) = let
+    -- Position of the new vertex created for each edge
+    vidAB = VertexID $ vsize + unEdgeID eid
+
+    -- Position of the 2 new split edges in blocks of 2 at
+    -- the lower part of the array.
     eid1 = 2 * eid
     eid2 = eid1 + 1
-    foo x vf
-      | x == v3 = 2
-      | x == v2 = 1
-      | x == v1 = 0
-      | otherwise = error $ "[SubTwo] Error during subdivision. It must be a bug! " ++ show vf ++ " " ++ show x
-      where (v1, v2, v3) = fast3DSort vf
-    getNewFace Nothing _ = Nothing
-    getNewFace (Just fid) vid = let
-      fb = faceConn =! fid
-      in return $ 4 * fid + (foo vid fb)
-    in do
-      writeM me eid1 (getNewFace fida vid1, getNewFace fidb vid1, vid1, v12)
-      writeM me eid2 (getNewFace fida vid2, getNewFace fidb vid2, v12, vid2)
 
-      es1 <- readM mv vid1
-      writeM mv vid1 (es1 `V.snoc` eid1)
-      es2 <- readM mv vid2
-      writeM mv vid2 (es2 `V.snoc` eid2)
+    getNewFace Nothing    _   = Nothing
+    getNewFace (Just fid) vid = let
+      oldf@(v1, v2, v3) = faceConn =! fid
+      fBlockOffset
+        | vid == v3 = 2  -- for f3, f4 doesn't have conn. with splitting edges
+        | vid == v2 = 1  -- for f2
+        | vid == v1 = 0  -- for f1
+        | otherwise = error $ "[SubTwo] I've found the wrong face!" ++ show oldf
+      in return $ 4 * fid + fBlockOffset
+
+    in do
+      writeM me eid1 (getNewFace fida vidA, getNewFace fidb vidA, vidA, vidAB)
+      writeM me eid2 (getNewFace fida vidB, getNewFace fidb vidB, vidAB, vidB)
+
+      es1 <- readM mv vidA
+      writeM mv vidA (es1 `V.snoc` eid1)
+      es2 <- readM mv vidB
+      writeM mv vidB (es2 `V.snoc` eid2)
       
-      es12 <- readM mv v12
-      writeM mv v12 (es12 V.++ (V.fromList [eid1, eid2]))
+      es12 <- readM mv vidAB
+      writeM mv vidAB (es12 V.++ (V.fromList [eid1, eid2]))
 
   in runST $ do
     mf <- V.unsafeThaw f
@@ -250,18 +290,6 @@ subdivideTwoConn ms@MeshConn{..} = let
     fe <- V.unsafeFreeze me
     fv <- V.unsafeFreeze mv
     return $ MeshConn t fv fe ff
-
-{-# INLINE fast3DSort #-}
-fast3DSort :: (Ord a)=> (a,a,a) -> (a,a,a)
-fast3DSort v@(a, b, c)
-  | (a >= b) && (b >= c) = v
-  | otherwise            = (a', b', c')
-  where
-    minab = min a b
-    maxab = max a b
-    c'    = max maxab c
-    b'    = max (min maxab c) minab
-    a'    = min minab c
 
 findEdge :: (VertexID, VertexID, VertexID) -> MeshConn -> Maybe (EdgeID, EdgeID, EdgeID)
 findEdge (v1, v2 ,v3) MeshConn{..} = let
@@ -306,15 +334,18 @@ mkEdgeConn (a, b)
 -- t -- v -- j    j <- | -> t
 --       \             |
 --        k            i
-buildMeshConn::[(Int, Int, Int)] -> (VertexSet, EdgeSet)
+buildMeshConn :: [(Int, Int, Int)] -> (VertexSet, EdgeSet)
 buildMeshConn fs = L.foldl' addTriangle initfs (zip fs [0..])
   where initfs = (IM.empty, M.empty)
 
 -- | Add a trianglulation from the mesh.
-addTriangle::(VertexSet, EdgeSet) -> ((Int, Int, Int), Int) -> (VertexSet, EdgeSet)
-addTriangle (vs, es) ((a,b,c), fid) = (vs', es''')
+addTriangle :: (VertexSet, EdgeSet) -> ((Int, Int, Int), Int) -> (VertexSet, EdgeSet)
+addTriangle (vs, es) ((a,b,c), fid) = (vAdder vs, es''')
   where
-    vs' = addVertex a eidAB eidCA $ addVertex b eidAB eidBC $ addVertex c eidBC eidCA vs
+    vAdder = addVertex a eidAB eidCA .
+             addVertex b eidAB eidBC .
+             addVertex c eidBC eidCA
+             
     (eidAB, es''') = addEdge a b es''
     (eidBC, es'')  = addEdge b c es'
     (eidCA, es')   = addEdge c a es
@@ -342,11 +373,13 @@ addTriangle (vs, es) ((a,b,c), fid) = (vs', es''')
 -- OBS: - It doesn't work for mesh with holes
 --      - It doesn't consider disjoints by one vertex (e.g. |><|)
 makepatch::(VertexSet, EdgeSet) -> [(Int, Int, Int)] -> [Int] -> MeshConn
+makepatch (vs, es) fs _
+  | IM.null vs || M.null es || null fs = MeshConn V.empty V.empty V.empty V.empty
 makepatch (vs, es) fs creases = let
   foo1 (Edge (e1, e2), (_, Left f1))        = (Just $ FaceID f1, Nothing, VertexID e1, VertexID e2)
   foo1 (Edge (e1, e2), (_, Right (f1, f2))) = (Just $ FaceID f1, Just $ FaceID f2, VertexID e1, VertexID e2)
   foo2 i = maybe V.empty (V.map EdgeID . V.fromList . IS.toList) (IM.lookup i vs)
-  foo3 (a, b, c) = (VertexID a, VertexID b, VertexID c) 
+  foo3 (a, b, c) = (VertexID a, VertexID b, VertexID c)
   size = 1 + (fst $ IM.findMax vs)
   fc = V.map foo3 $ V.fromList fs
   ec = V.map foo1 . V.fromList . L.sortBy (compare `on` fst . snd) $ M.toList es
