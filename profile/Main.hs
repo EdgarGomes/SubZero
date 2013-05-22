@@ -18,11 +18,11 @@ main :: IO ()
 main = let
   path = "test"
   
-  testOne = mkSubTwo (V.take 3 ps) [(1,2,0)] [0,1,2]
-  testTwo = mkSubTwo ps [(1,2,0),(2,3,0),(3,4,0),(4,5,0),(5,1,0)] [1, 3, 5]
-  testTwoInv = mkSubTwo ps [(4,3,0),(2,1,0),(0,2,3),(4,5,0),(1,0,5)] [1, 3, 5]
-  ps = V.fromList [ Vec3 1 1 1, Vec3 0 0 0.5, Vec3 0 1 0
-                  , Vec3 1 2 0, Vec3 (-2) 1 3, Vec3 (-1) 0 3]
+  testOne = mkSubTwo' ps [(3,5,2)] [2,3,4]
+  testTwo = mkSubTwo' ps [(3,4,2),(4,5,2),(5,6,2),(6,7,2),(7,3,2)] [3, 5, 7]
+  testTwoInv = mkSubTwo' ps [(6,5,2),(4,3,2),(2,4,5),(6,7,2),(3,2,7)] [3, 5, 7]
+  ps = V.fromList [ Vec3 0 0 0, Vec3 0 0 0, Vec3 1 1 1, Vec3 0 0 0.5, Vec3 0 1 0
+                  , Vec3 1 2 0, Vec3 (-2) 1 3, Vec3 (-1) 0 3, Vec3 0 0 0]
   
   addNorm sz x = let
     func i _ = (subTwoNormals sz) V.! i
@@ -35,9 +35,7 @@ main = let
       n = case args of
         [ns] -> read ns
         _    -> error "Insert the number of subdivision steps!"
-    case testTwoInv of
-      Just s -> let
-        name = path ++ "-SubTwo-" ++ show n ++ ".vtu" 
-        sz = subdivideTwoN n s 
-        in writeUniVTKfile name (addNorm sz $ renderSubTwo $ sz) 
-      _ -> print "Can't create mesh."
+      name = path ++ "-SubTwo-" ++ show n ++ ".vtu" 
+      sz = subdivideTwoN n testTwoInv
+
+    writeUniVTKfile name (addNorm sz $ renderSubTwo $ sz) 
