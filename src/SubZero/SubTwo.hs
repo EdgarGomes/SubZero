@@ -12,9 +12,9 @@ module SubZero.SubTwo
        , subdivideTwo
        , subdivideTwoN
        , renderSubTwo
-       , subTwoNormals 
+       , subTwoNormals
        , subTwoTans
-       , subTwoLimit 
+       , subTwoLimit
 
        , buildMesh
        , MeshConn
@@ -30,7 +30,7 @@ import           Data.IntSet             (IntSet)
 import           Data.Map                (Map)
 import           Data.Vector             (Vector)
 import           Data.Maybe              (isJust, mapMaybe)
-  
+
 import qualified Data.Vector         as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Mutable as VM
@@ -45,8 +45,8 @@ import Hammer.Render.VTK.VTKRender
 
 --import           Debug.Trace
 --dbg a = trace (">> " ++ show a) a
-                  
--- ==============================================================================
+
+-- =======================================================================================
 
 newtype VertexID = VertexID
   { unVertexID :: Int
@@ -83,7 +83,7 @@ data MeshConn =
   , edgeConn        :: Vector EdgeConn   -- ^ Faces and ending vertex for each edge
   , faceConn        :: Vector FaceConn   -- ^ Vertex of each face (triangle)
   , controlPointers :: Vector Int        -- ^ List of control points *pointers*
-  } deriving (Show) 
+  } deriving (Show)
 
 -- | The @SubTwo@ holds the mesh structure and the vertices values.
 -- Assuming that all vertices of a mesh are control points at the level 0
@@ -119,8 +119,8 @@ instance TableAccess EdgeConn where
 
 instance TableAccess FaceConn where
   type Ix FaceConn = FaceID
-  readM  mv = VM.read  mv . unFaceID 
-  writeM mv = VM.write mv . unFaceID 
+  readM  mv = VM.read  mv . unFaceID
+  writeM mv = VM.write mv . unFaceID
   mv =! v   = mv V.! (unFaceID v)
   nullValue = (VertexID (-1), VertexID (-1), VertexID (-1))
 
@@ -138,7 +138,7 @@ instance TableAccess VertexType where
   mv =! v   = mv V.! (unVertexID v)
   nullValue = SmoothVertex
 
--- ==============================================================================
+-- =======================================================================================
 
 -- | Function to extract array of faces from a @MeshConn@
 meshFaces :: MeshConn -> Vector (Int, Int, Int)
@@ -152,24 +152,24 @@ meshFaces = let
 -- Warning: Giving the wrong control points array (size lower that
 -- the highest control point reference in the mesh) will rise an error.
 mkSubTwo :: Vector Vec3 -> MeshConn -> SubTwo
-mkSubTwo ps ms = SubTwo {
-    meshConn   = ms
+mkSubTwo ps ms = SubTwo
+  { meshConn   = ms
   , meshPoints = V.map (ps V.!) (controlPointers ms)
   }
-    
+
 -- | Creates a 2D mesh given a array points, a list of triangle that refers
 -- to the array of points and a list of points that should be marked as
 -- corners (their values are kept constant during the subdivision).
 mkSubTwo' :: Vector Vec3 -> [(Int, Int, Int)] -> [Int] -> SubTwo
 mkSubTwo' ps ts cs = mkSubTwo ps (buildMesh ts cs)
 
--- | Subdivide n times a mesh
+-- | Subdivide n times a mesh.
 subdivideTwoN :: Int -> SubTwo -> SubTwo
 subdivideTwoN n sub
   | n <= 0    = sub
   | otherwise = subdivideTwoN (n-1) (sub `seq` subdivideTwo sub)
 
--- | Subdivide a mesh
+-- | Subdivide a mesh.
 subdivideTwo :: SubTwo -> SubTwo
 subdivideTwo sb@SubTwo{..} = let
   subMesh = subdivideTwoConn   meshConn
@@ -179,13 +179,13 @@ subdivideTwo sb@SubTwo{..} = let
 -- | Subdivides the mesh connections, but keeps the previous vertex values
 -- (meshPoints). This function returns a non-valid @MeshConn@ since the new
 -- vertex aren't created yet and the old vertex aren't updated. Therefore use
--- the function @subdivideTwoPoints@ in order to calculate the new vertex array. 
+-- the function @subdivideTwoPoints@ in order to calculate the new vertex array.
 subdivideTwoConn :: MeshConn -> MeshConn
 subdivideTwoConn ms@MeshConn{..} = let
   vsize = V.length vertexConn
   esize = V.length edgeConn
   fsize = V.length faceConn
-  
+
   -- Each face gives rise to 4 new faces
   newfsize = 4 * fsize
   -- Each edge gives rise to 1 new vertex
@@ -193,7 +193,7 @@ subdivideTwoConn ms@MeshConn{..} = let
   -- Lower part (2 x  num. of edges) is reserved for edge splitting.
   -- Each edge of a face (triangle) is split in two edge by the creation of
   -- a new vertex.
-  -- 
+  --
   -- Upper part reserved for internal new edges. Each face will give
   -- rise to 4 new faces by adding a new internal face. This is done
   -- by connecting each new vertex pairwise and, therefore adding 3
@@ -202,12 +202,12 @@ subdivideTwoConn ms@MeshConn{..} = let
 
   addvsize = esize
   eoffset  = 2 * esize
-  
+
   f = V.replicate newfsize nullValue
   e = V.replicate newesize nullValue
   v = V.replicate newvsize nullValue
   t = vertexType V.++ V.replicate addvsize nullValue
-  
+
   addF :: (PrimMonad m)
        => VM.MVector (PrimState m) FaceConn
        -> VM.MVector (PrimState m) EdgeConn
@@ -218,14 +218,14 @@ subdivideTwoConn ms@MeshConn{..} = let
   addF mf me mv fid face@(v1, v2, v3) = let
     -- The sort face's index were remove. It seems unnecessary and
     -- caused normal flipping (CW <-> CCW) on the triangular faces.
-    errMsg = error $ "[SubTwo] I can't find edge of this face. It should be here." ++ show face
+    errMsg = error $ "[SubTwo] Can't find the edge of this face." ++ show face
     (e12, e23, e31) = maybe errMsg id (findEdge face ms)
 
     -- Existent vertexs are updated and a new vertex is created for
     -- each new edge. Therefore the new vertex are added after them
     -- in the array. The new pos is uniquely defined as described
     -- bellow (size of the old vertex array + the position of the
-    -- edge that creates the new vertex) 
+    -- edge that creates the new vertex)
     v12 = VertexID $ vsize + unEdgeID e12
     v23 = VertexID $ vsize + unEdgeID e23
     v31 = VertexID $ vsize + unEdgeID e31
@@ -240,18 +240,18 @@ subdivideTwoConn ms@MeshConn{..} = let
     f_2 = 1 + f_1
     f_3 = 2 + f_1
     f_4 = 3 + f_1
-  
+
     -- Each face creates 3 new internal edges that are placed in
-    -- blocks of 3 at the upper part of the array (after eoffset).  
+    -- blocks of 3 at the upper part of the array (after eoffset). 
     newe1 = EdgeID $ eoffset + 3 * (unFaceID fid)
     newe2 = newe1 + 1
     newe3 = newe2 + 1
-    
+
     in do
       -- keep clockwise convention v1 -> v2 -> v3
-      writeM mf f_1 (v1,  v12, v31) 
-      writeM mf f_2 (v2,  v23, v12) 
-      writeM mf f_3 (v3,  v31, v23) 
+      writeM mf f_1 (v1,  v12, v31)
+      writeM mf f_2 (v2,  v23, v12)
+      writeM mf f_3 (v3,  v31, v23)
       writeM mf f_4 (v12, v23, v31)
 
       writeM me newe1 (Just $ f_1, Just $ f_4, v31, v12)
@@ -301,7 +301,7 @@ subdivideTwoConn ms@MeshConn{..} = let
       writeM mv vidA (es1 `V.snoc` eid1)
       es2 <- readM mv vidB
       writeM mv vidB (es2 `V.snoc` eid2)
-      
+
       es12 <- readM mv vidAB
       writeM mv vidAB (es12 V.++ (V.fromList [eid1, eid2]))
 
@@ -335,7 +335,7 @@ findEdge (v1, v2 ,v3) MeshConn{..} = let
     e31 <- foo v3 v1 es3
     return (e12, e23, e31)
 
--- ==============================================================================
+-- =======================================================================================
 
 newtype Edge   = Edge (Int, Int) deriving (Show, Eq, Ord)
 type FaceInfo  = Either Int (Int, Int)
@@ -343,7 +343,7 @@ type EdgeSet   = Map Edge (Int, FaceInfo)
 type VertexSet = IntMap IntSet
 
 -- | Create a Patch mesh  given a list of triangles and a list of quadruple
--- junctions. Provide all the triangles with the same clockwise sequence. 
+-- junctions. Provide all the triangles with the same clockwise sequence.
 -- OBS: - It doesn't work for mesh with holes
 --      - It doesn't consider disjoints by one vertex (e.g. |><|)
 buildMesh :: [(Int, Int, Int)] -> [Int] -> MeshConn
@@ -369,14 +369,14 @@ buildControlMaps ts = let
   f     = V.fromList vs
   in (f, f_inv)
 
--- | Allows ordering of EdgeID, such (a,b) = (b,a)                 
+-- | Allows ordering of EdgeID, such (a,b) = (b,a)
 mkEdgeConn :: (Int, Int) -> Edge
 mkEdgeConn (a, b)
   | a > b     = Edge (b, a)
   | otherwise = Edge (a, b)
 
 -- | Create a set of connections for vertex and edges.
---        i            v       
+--        i            v
 --       /             |
 -- t -- v -- j    j <- | -> t
 --       \             |
@@ -392,24 +392,24 @@ addTriangle (vs, es) ((a,b,c), fid) = (vAdder vs, es''')
     vAdder = addVertex a eidAB eidCA .
              addVertex b eidAB eidBC .
              addVertex c eidBC eidCA
-             
+
     (eidAB, es''') = addEdge a b es''
     (eidBC, es'')  = addEdge b c es'
     (eidCA, es')   = addEdge c a es
 
     addEdge x y ess = let
       e = mkEdgeConn (x, y)
-      n = M.size ess 
+      n = M.size ess
       in case M.lookup e ess of
         Just (eid, info) -> (eid, M.insert e (eid, solveCollision info) ess)
         _                -> (n  , M.insert e (n, Left fid) ess)
-    
+
     addVertex v e1 e2 vss
       | IM.member v vss = IM.adjust ins v vss
       | otherwise       = IM.insert v (IS.fromList [e1, e2]) vss
       where ins = IS.insert e1 . IS.insert e2
-    
-    -- A 2D surface edge can be assigned to max only 2 members (e.g. triangles) 
+
+    -- A 2D surface edge can be assigned to max only 2 members (e.g. triangles)
     solveCollision (Left e1)
       | e1 /= fid = Right (e1, fid)
       | otherwise = error "[SubTwo] Duplicated patch"
@@ -424,7 +424,7 @@ makepatch :: (VertexSet, EdgeSet, Vector Int) -> [(Int, Int, Int)]
 makepatch (vs, es, cp) fs creases
   | IM.null vs ||
     M.null es  ||
-    null fs   = MeshConn nov nov nov nov nov 
+    null fs   = MeshConn nov nov nov nov nov
   | otherwise = MeshConn
      { faceConn = V.map foo3 $ V.fromList fs
      , edgeConn = V.map foo1 . V.fromList . L.sortBy (compare `on` fst . snd) $
@@ -448,15 +448,13 @@ makepatch (vs, es, cp) fs creases
     foo2 i = maybe V.empty (V.map EdgeID . V.fromList . IS.toList) (IM.lookup i vs)
     foo3 (a, b, c) = (VertexID a, VertexID b, VertexID c)
 
-
-     
--- ==============================================================================
+-- =======================================================================================
 -- The masks and rules were based on the folliwng papers:
 -- "Piecewise Smooth Surface Reconstruction"
 -- "High Performance Subdivision Surfaces"
 -- "Implementation of Triangle Subdivision for Holding Sharp Features with
 -- Flatness Control"
--- ==============================================================================
+-- =======================================================================================
 
 subdivideTwoPoints :: MeshConn -> Vector Vec3 -> Vector Vec3
 subdivideTwoPoints MeshConn{..} ps = let
@@ -487,17 +485,17 @@ updateVertex ps vid vtype es
   | vtype == CornerVertex  = v
   | V.length onBoader == 2 = (1/8) *& ((6 *& v) &+ (sumAll onBoader))
   | V.length onBoader >= 2 = v
-  | n                 >= 3 = ((1 - w) *& v) &+ ((w / dn) *& (sumAll es)) 
+  | n                 >= 3 = ((1 - w) *& v) &+ ((w / dn) *& (sumAll es))
   | otherwise              = v -- Maybe an error should be rising.
   where
-    n  = V.length es 
+    n  = V.length es
     dn = fromIntegral n
     w  = regularWeight n
     v  = ps =! vid
     sumAll = sumOtherEnd ps id vid
     (onBoader, _) = V.unstablePartition isOnBoader es
-    
-regularWeight :: Int -> Double 
+
+regularWeight :: Int -> Double
 regularWeight n = let
   dn = fromIntegral n
   a' = 3 + 2 * cos (2 * pi / dn)
@@ -505,7 +503,7 @@ regularWeight n = let
 
 sumOtherEnd :: Vector Vec3 -> (Vec3 -> Vec3) -> VertexID -> Vector EdgeConn -> Vec3
 sumOtherEnd ps func vid = let
-  foo acc e = maybe acc (\i -> (func $ ps =! i) &+ acc) (getOtherEnd vid e) 
+  foo acc e = maybe acc (\i -> (func $ ps =! i) &+ acc) (getOtherEnd vid e)
   in V.foldl' foo zero
 
 getOtherEnd :: VertexID -> EdgeConn -> Maybe VertexID
@@ -513,14 +511,14 @@ getOtherEnd vid (_, _, v1, v2)
   | vid == v1 = return v2
   | vid == v2 = return v1
   | otherwise = Nothing
-     
+
 getOtherEnds :: VertexID -> Vector EdgeConn -> Vector VertexID
-getOtherEnds vid = V.map (\(Just x) -> x) . V.filter isJust . V.map (getOtherEnd vid) 
+getOtherEnds vid = V.map (\(Just x) -> x) . V.filter isJust . V.map (getOtherEnd vid)
 
 isOnBoader :: EdgeConn -> Bool
 isOnBoader (Just _, Just _, _, _) = False
 isOnBoader _                      = True
-                                    
+
 withFace :: EdgeConn -> Bool
 withFace (Just _, _, _, _) = True
 withFace (_, Just _, _, _) = True
@@ -530,12 +528,12 @@ newVertex :: Vector Vec3 -> Vector FaceConn -> EdgeConn -> Vec3
 newVertex ps fs (Just f1, Just f2, v1, v2) = let
   s = (ps =! v1) &+ (ps =! v2) &+ sumFace ps (fs =! f1) &+ sumFace ps (fs =! f2)
   in (1/8) *& s
-newVertex ps _ (_, _, v1, v2) = 0.5 *& ((ps =! v1) &+ (ps =! v2)) 
-     
+newVertex ps _ (_, _, v1, v2) = 0.5 *& ((ps =! v1) &+ (ps =! v2))
+
 sumFace :: Vector Vec3 -> (VertexID, VertexID, VertexID) -> Vec3
 sumFace ps (v1, v2, v3) = (ps =! v1) &+ (ps =! v2) &+ (ps =! v3)
 
--- ==============================================================================
+-- =======================================================================================
 
 -- | Calculate the limiting mesh e.g. the limiting position of each vertex
 -- if the subdivision would be applied infinitely.
@@ -543,7 +541,7 @@ subTwoLimit :: SubTwo -> SubTwo
 subTwoLimit sb@SubTwo{..} = let
   vsize = V.length meshPoints
   vids  = V.enumFromN (VertexID 0) vsize
-  es    = edgeConn   meshConn 
+  es    = edgeConn   meshConn
   vct   = vertexType meshConn
   foo vid = limitPos meshPoints vid (vct =! vid) es
   in sb { meshPoints = V.map foo vids }
@@ -553,10 +551,10 @@ limitPos ps vid vtype es
   | vtype == CornerVertex  = v
   | V.length onBoader == 2 = (1/6) *& ((4 *& v) &+ (sumAll onBoader))
   | V.length onBoader >= 2 = v
-  | n                 >= 3 = o *& v  &+ (sumAll es) 
+  | n                 >= 3 = o *& v  &+ (sumAll es)
   | otherwise              = v -- Maybe an error should be rising.
   where
-    n  = V.length es 
+    n  = V.length es
     dn = fromIntegral n
     w  = regularWeight n
     o  = (3 * dn) / (8 * w)
@@ -573,17 +571,17 @@ subTwoTans :: SubTwo -> Vector (Vec3, Vec3)
 subTwoTans SubTwo{..} = let
   vsize = V.length meshPoints
   vids  = V.enumFromN (VertexID 0) vsize
-  ecs   = edgeConn   meshConn 
+  ecs   = edgeConn   meshConn
   vcs   = vertexConn meshConn
   vct   = vertexType meshConn
-  foo vid = tans meshPoints vid (vct =! vid) ecs (vcs =! vid) 
+  foo vid = tans meshPoints vid (vct =! vid) ecs (vcs =! vid)
   in V.map foo vids
-  
+
 tans :: Vector Vec3 -> VertexID -> VertexType
      -> Vector EdgeConn -> Vector EdgeID -> (Vec3, Vec3)
 tans ps vid vtype es eids
-  | V.length looseE > 0   = error "[SubTwo] I don't know how find a tan in a vertex with loose edges."
-  | otherwise             = case splitOpenLoop segs of
+  | V.length looseE > 0 = error "[SubTwo] Can't calc the tan in a vertex with loose edges."
+  | otherwise           = case splitOpenLoop segs of
     ([OpenSeq a b vec], [])
       | vtype == CornerVertex && V.length vec > 1 -> let
         vs = getVS vec
@@ -598,8 +596,8 @@ tans ps vid vtype es eids
         t1 = creaseAlongTan (V.head vs) (V.last vs)
         t2 = creaseAcrossTan (ps =! vid) vs
         in (t1, t2)
-    ([], [LoopSeq vec])     -> let vs = getVS vec in (tan1 vs, tan2 vs)
-    _                       -> error "[SubTwo] Strage mesh topology. I can't calc its tangent values."
+    ([], [LoopSeq vec]) -> let vs = getVS vec in (tan1 vs, tan2 vs)
+    _ -> error "[SubTwo] Strange mesh topology. I can't calculate its tangent values."
   where
     getVS = V.map (ps =!) . getOtherEnds vid . V.map (es V.!)
     segs  = getVecSegsIndirect es (V.map unEdgeID properE)
@@ -652,14 +650,14 @@ creaseAcrossTan v vec
       | i == size = acc &+ (x &* (sin z))
       | otherwise = acc &+ x &* ((2 * (cos z)-2) * (sin (fromIntegral $ i-1) * z))
 
--- ==============================================================================
-                          
+-- =======================================================================================
+
 -- | Prepare a subdivision patch for rendering.
 renderSubTwo :: SubTwo -> VTK Vec3
 renderSubTwo SubTwo{..} = let
   ts = faceConn meshConn
   tr :: U.Vector Vec3
-  tr = V.convert $ meshPoints 
+  tr = V.convert $ meshPoints
   in mkUGVTK "SubTwo" tr ts
 
 instance RenderCell FaceConn where

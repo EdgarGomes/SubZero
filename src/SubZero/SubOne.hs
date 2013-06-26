@@ -26,7 +26,7 @@ import           Data.Vector                 (Vector, (!))
 import           Hammer.Math.Algebra
 import           Hammer.Render.VTK.VTKRender
 
--- ==========================================================================================
+-- =======================================================================================
 
 newtype Level = Level Int deriving (Show, Eq, Num)
 newtype NSegm = NSegm Int deriving (Show, Eq, Num)
@@ -100,7 +100,7 @@ subOneTan SubOne{..} = let
       back  = subOneArr!(i-1)
   in V.imap (\i x -> normalize $ func i x) subOneArr
 
-
+-- =======================================================================================
 
 -- | Render suddivision in VTK.
 renderSubOne :: Int -> SubOne Vec3 -> VTK Vec3
@@ -108,7 +108,7 @@ renderSubOne nmin sub = let
   (Level nl) = subOneLevel sub
   n = if nmin > nl then nmin - nl else 0
   subNArr :: U.Vector Vec3
-  subNArr = U.convert $ subOneArr $ subdivideOneN n sub 
+  subNArr = U.convert $ subOneArr $ subdivideOneN n sub
   line    = U.generate (U.length subNArr) id
   in mkUGVTK "SubOne" subNArr (V.singleton line)
 
