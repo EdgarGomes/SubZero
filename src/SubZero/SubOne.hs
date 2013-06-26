@@ -1,9 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module SubZero.SubOne
        ( SubOne
+       , Level (..)
+       , NSegm (..)
        , subOneArr
+       , getSubOneArrSize
        , subOneLevel
        , subOneNSeg
        , mkSubOne
@@ -24,8 +28,8 @@ import           Hammer.Render.VTK.VTKRender
 
 -- ==========================================================================================
 
-newtype Level = Level Int deriving (Show, Eq)
-newtype NSegm = NSegm Int deriving (Show, Eq)
+newtype Level = Level Int deriving (Show, Eq, Num)
+newtype NSegm = NSegm Int deriving (Show, Eq, Num)
 
 data SubOne a = SubOne
   { subOneArr   :: V.Vector a
@@ -42,16 +46,18 @@ mkSubOne arr
                        , subOneLevel = Level 0
                        , subOneNSeg  = NSegm ns }
   | otherwise        = Nothing
-                       
-getArrSize :: NSegm -> Level -> Int
-getArrSize (NSegm n) (Level l) = let
+
+-- | Calculate the number of nodes in 'SubOne' for a given initial number of segments
+-- after @l@ levels of subdivisions.
+getSubOneArrSize :: NSegm -> Level -> Int
+getSubOneArrSize (NSegm n) (Level l) = let
   each = (2 ^ l) + 1
   in n*each - (n-1)
-     
+
 subdivideOne :: (MultiVec v)=> SubOne v -> SubOne v
 subdivideOne sub@SubOne{..} = let
   levelUp  = let Level i = subOneLevel in Level (i+1)
-  newSize  = getArrSize subOneNSeg levelUp
+  newSize  = getSubOneArrSize subOneNSeg levelUp
   newMax   = newSize - 1
   prevSize = V.length subOneArr
   prevMax  = prevSize - 1
