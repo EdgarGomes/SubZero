@@ -12,7 +12,7 @@ bug-reports:    talktoedgar@gmail.com
 synopsis:       Library for subdivision surfaces
 description: Library to create and transforms smooth subdivision surfaces
   - Based on Catmull-Clark rules. But extendable for others schemes
-  - Full crease/corne edge/vertex 
+  - Full crease/corne edge/vertex
 category:       Math
 author:         Edgar Gomes de Araujo
 
@@ -26,7 +26,7 @@ Library
                  -funbox-strict-fields
                  -fwarn-tabs
                  ---eventlog
-                 -auto-all                       
+                 -auto-all
                  -caf-all
 
     build-depends:    base       == 4.*
@@ -35,7 +35,9 @@ Library
                     , primitive  == 0.5.*
                     , hammer     == 0.2.*
 
-    exposed-modules:  SubZero.SubOne
+    exposed-modules:  SubZero
+
+    other-modules:    SubZero.SubOne
                     , SubZero.SubTwo
 
     exposed:          True

@@ -3,13 +3,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module SubZero.SubOne
-       ( SubOne
+       ( SubOne ( subOneArr
+                , subOneLevel
+                , subOneNSeg
+                )
        , Level (..)
        , NSegm (..)
-       , subOneArr
        , getSubOneArrSize
-       , subOneLevel
-       , subOneNSeg
        , mkSubOne
        , subdivideOne
        , subdivideOneN
@@ -103,12 +103,11 @@ subOneTan SubOne{..} = let
 -- =======================================================================================
 
 -- | Render suddivision in VTK.
-renderSubOne :: Int -> SubOne Vec3 -> VTK Vec3
-renderSubOne nmin sub = let
+renderSubOne :: (U.Unbox v, RenderElemVTK v)=> SubOne v -> VTK v
+renderSubOne sub = let
   (Level nl) = subOneLevel sub
-  n = if nmin > nl then nmin - nl else 0
-  subNArr :: U.Vector Vec3
-  subNArr = U.convert $ subOneArr $ subdivideOneN n sub
+  --subNArr :: U.Vector Vec3
+  subNArr = U.convert . subOneArr $ sub
   line    = U.generate (U.length subNArr) id
   in mkUGVTK "SubOne" subNArr (V.singleton line)
 
