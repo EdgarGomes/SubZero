@@ -6,8 +6,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module SubZero.SubTwo
-       ( SubTwo (..)
+       ( SubTwo ( subTwoMesh
+                , subTwoPoints
+                )
        , mkSubTwo
+       , mkSubTwoFromMesh
        , subdivideTwo
        , subdivideTwoN
        , renderSubTwo
@@ -22,13 +25,13 @@ module SubZero.SubTwo
                   , faceConn
                   , controlPointers
                   )
-       , meshFaces
+       , getSubTwoFaces
          -- * Advanced API
-       , TableAccess (..)
        , SubSuper
-       , VertexID (..)
-       , EdgeID   (..)
-       , FaceID   (..)
+       , TableAccess (..)
+       , VertexID    (..)
+       , EdgeID      (..)
+       , FaceID      (..)
        ) where
 
 import           Data.Function
@@ -98,12 +101,12 @@ data MeshConn =
 -- | The @SubTwo@ holds the mesh structure and the vertices values.
 -- Assuming that all vertices of a mesh are control points at the level 0
 -- of subdivision (no subdivision), they are fetched and stored in the
--- @meshPoints@ array. On the subsequent subdivision new and updated vertex
+-- @subTwoPoints@ array. On the subsequent subdivision new and updated vertex
 -- are stored there as well.
 data SubTwo v =
   SubTwo
-  { meshConn      :: MeshConn
-  , meshPoints    :: Vector v       -- ^ Store the all the vertex during subdivision.
+  { subTwoMesh   :: MeshConn  -- ^ Store the vertex connections.
+  , subTwoPoints :: Vector v  -- ^ Store the all the vertex positions.
   } deriving (Show)
 
 class TableAccess a where
@@ -161,8 +164,8 @@ class (TableAccess v, MultiVec v, Ix v ~ VertexID)=> SubSuper v
 -- =======================================================================================
 
 -- | Function to extract array of faces from a @MeshConn@
-meshFaces :: MeshConn -> Vector (Int, Int, Int)
-meshFaces = let
+getSubTwoFaces :: MeshConn -> Vector (Int, Int, Int)
+getSubTwoFaces = let
   foo (a, b, c) = (unVertexID a, unVertexID b, unVertexID c)
   in V.map foo . faceConn
 
@@ -171,17 +174,17 @@ meshFaces = let
 -- the mesh after updating the control points.
 -- Warning: Giving the wrong control points array (size lower that
 -- the highest control point reference in the mesh) will rise an error.
-mkSubTwo' :: (SubSuper v)=> Vector v -> MeshConn -> SubTwo v
-mkSubTwo' ps ms = SubTwo
-  { meshConn   = ms
-  , meshPoints = V.map (ps V.!) (controlPointers ms)
+mkSubTwoFromMesh :: (SubSuper v)=> Vector v -> MeshConn -> SubTwo v
+mkSubTwoFromMesh ps ms = SubTwo
+  { subTwoMesh   = ms
+  , subTwoPoints = V.map (ps V.!) (controlPointers ms)
   }
 
 -- | Creates a 2D mesh given a array points, a list of triangle that refers
 -- to the array of points and a list of points that should be marked as
 -- corners (their values are kept constant during the subdivision).
 mkSubTwo :: (SubSuper v)=> Vector v -> [(Int, Int, Int)] -> [Int] -> SubTwo v
-mkSubTwo ps ts cs = mkSubTwo' ps (buildMesh ts cs)
+mkSubTwo ps ts cs = mkSubTwoFromMesh ps (buildMesh ts cs)
 
 -- | Subdivide n times a mesh.
 subdivideTwoN :: (SubSuper v)=> Int -> SubTwo v -> SubTwo v
@@ -192,12 +195,12 @@ subdivideTwoN n sub
 -- | Subdivide a mesh.
 subdivideTwo :: (SubSuper v)=> SubTwo v -> SubTwo v
 subdivideTwo sb@SubTwo{..} = let
-  subMesh = subdivideTwoConn   meshConn
-  subArr  = subdivideTwoPoints meshConn meshPoints
-  in sb { meshConn = subMesh, meshPoints = subArr }
+  subMesh = subdivideTwoConn   subTwoMesh
+  subArr  = subdivideTwoPoints subTwoMesh subTwoPoints
+  in sb { subTwoMesh = subMesh, subTwoPoints = subArr }
 
 -- | Subdivides the mesh connections, but keeps the previous vertex values
--- (meshPoints). This function returns a non-valid @MeshConn@ since the new
+-- (subTwoPoints). This function returns a non-valid @MeshConn@ since the new
 -- vertex aren't created yet and the old vertex aren't updated. Therefore use
 -- the function @subdivideTwoPoints@ in order to calculate the new vertex array.
 subdivideTwoConn :: MeshConn -> MeshConn
@@ -551,12 +554,12 @@ sumFace ps (v1, v2, v3) = (ps =! v1) &+ (ps =! v2) &+ (ps =! v3)
 -- if the subdivision would be applied infinitely.
 subTwoLimit :: (SubSuper v)=> SubTwo v -> SubTwo v
 subTwoLimit sb@SubTwo{..} = let
-  vsize = V.length meshPoints
+  vsize = V.length subTwoPoints
   vids  = V.enumFromN (VertexID 0) vsize
-  es    = edgeConn   meshConn
-  vct   = vertexType meshConn
-  foo vid = limitPos meshPoints vid (vct =! vid) es
-  in sb { meshPoints = V.map foo vids }
+  es    = edgeConn   subTwoMesh
+  vct   = vertexType subTwoMesh
+  foo vid = limitPos subTwoPoints vid (vct =! vid) es
+  in sb { subTwoPoints = V.map foo vids }
 
 limitPos ::(SubSuper v)=> Vector v -> VertexID -> VertexType -> Vector EdgeConn -> v
 limitPos ps vid vtype es
@@ -581,12 +584,12 @@ subTwoNormals = V.map (\(t1, t2) -> t1 &^ t2) . subTwoTans
 -- | Calculate two tangents (linear independent) for each vertex.
 subTwoTans :: SubTwo Vec3 -> Vector (Vec3, Vec3)
 subTwoTans SubTwo{..} = let
-  vsize = V.length meshPoints
+  vsize = V.length subTwoPoints
   vids  = V.enumFromN (VertexID 0) vsize
-  ecs   = edgeConn   meshConn
-  vcs   = vertexConn meshConn
-  vct   = vertexType meshConn
-  foo vid = tans meshPoints vid (vct =! vid) ecs (vcs =! vid)
+  ecs   = edgeConn   subTwoMesh
+  vcs   = vertexConn subTwoMesh
+  vct   = vertexType subTwoMesh
+  foo vid = tans subTwoPoints vid (vct =! vid) ecs (vcs =! vid)
   in V.map foo vids
 
 tans :: Vector Vec3 -> VertexID -> VertexType
@@ -667,9 +670,9 @@ creaseAcrossTan v vec
 -- | Prepare a subdivision patch for rendering.
 renderSubTwo :: SubTwo Vec3 -> VTK Vec3
 renderSubTwo SubTwo{..} = let
-  ts = faceConn meshConn
+  ts = faceConn subTwoMesh
   tr :: U.Vector Vec3
-  tr = V.convert $ meshPoints
+  tr = V.convert $ subTwoPoints
   in mkUGVTK "SubTwo" tr ts
 
 instance RenderCell FaceConn where

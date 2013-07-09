@@ -5,25 +5,25 @@
 module SubZero
        ( mkSubOne
        , mkSubTwo
-       , SubZero (..)
+       , mkSubTwoFromMesh
+       , SubZero       (..)
        , RenderSubZero (..)
 
          -- * SubOne (Lines)
        , subOneTan
        , subOneLimit
-       , SubOne ( subOneArr
+       , SubOne ( subOnePoints
                 , subOneLevel
                 , subOneNSeg
                 )
-       , Level (..)
-       , NSegm (..)
-       , getSubOneArrSize
 
          -- * SubTwo (Surfaces)
-       , SubTwo (..)
        , subTwoTans
        , subTwoLimit
        , subTwoNormals
+       , SubTwo ( subTwoMesh
+                , subTwoPoints
+                )
        , buildMesh
        , MeshConn ( vertexType
                   , vertexConn
@@ -31,11 +31,7 @@ module SubZero
                   , faceConn
                   , controlPointers
                   )
-       , meshFaces
-       , TableAccess (..)
-       , VertexID (..)
-       , EdgeID   (..)
-       , FaceID   (..)
+       , getSubTwoFaces
        ) where
 
 import SubZero.SubOne

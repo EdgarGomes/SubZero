@@ -3,7 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module SubZero.SubOne
-       ( SubOne ( subOneArr
+       ( SubOne ( subOnePoints
                 , subOneLevel
                 , subOneNSeg
                 )
@@ -32,9 +32,9 @@ newtype Level = Level Int deriving (Show, Eq, Num)
 newtype NSegm = NSegm Int deriving (Show, Eq, Num)
 
 data SubOne a = SubOne
-  { subOneArr   :: V.Vector a
-  , subOneLevel :: Level
-  , subOneNSeg  :: NSegm
+  { subOnePoints :: V.Vector a
+  , subOneLevel  :: Level
+  , subOneNSeg   :: NSegm
   } deriving (Show, Eq)
 
 -- | Construct an one dimensional Subdivision for n segments at Level 0
@@ -42,7 +42,7 @@ mkSubOne :: V.Vector v -> Maybe (SubOne v)
 mkSubOne arr
   |V.length arr >= 2 = let
     ns = V.length arr - 1
-    in return $ SubOne { subOneArr   = arr
+    in return $ SubOne { subOnePoints   = arr
                        , subOneLevel = Level 0
                        , subOneNSeg  = NSegm ns }
   | otherwise        = Nothing
@@ -59,20 +59,20 @@ subdivideOne sub@SubOne{..} = let
   levelUp  = let Level i = subOneLevel in Level (i+1)
   newSize  = getSubOneArrSize subOneNSeg levelUp
   newMax   = newSize - 1
-  prevSize = V.length subOneArr
+  prevSize = V.length subOnePoints
   prevMax  = prevSize - 1
   wasNode  = even
   func i
-    | i == 0      = subOneArr!0
-    | i == newMax = subOneArr!prevMax
+    | i == 0      = subOnePoints!0
+    | i == newMax = subOnePoints!prevMax
     | wasNode i   = (prevL &+ 6*&prev &+ prevH) &* (1/8)
     | otherwise   = (prev  &+ prevH) &* (1/2)
     where
-      prevL  = subOneArr!(previ-1)
-      prev   = subOneArr!previ
-      prevH  = subOneArr!(previ+1)
+      prevL  = subOnePoints!(previ-1)
+      prev   = subOnePoints!previ
+      prevH  = subOnePoints!(previ+1)
       previ  = i `div` 2
-  in sub {subOneArr = V.generate newSize func, subOneLevel = levelUp}
+  in sub {subOnePoints = V.generate newSize func, subOneLevel = levelUp}
 
 subdivideOneN :: (MultiVec v)=> Int -> SubOne v -> SubOne v
 subdivideOneN n sub
@@ -81,33 +81,31 @@ subdivideOneN n sub
 
 subOneLimit :: (MultiVec v)=> SubOne v -> Vector v
 subOneLimit SubOne{..} = let
-  nowmax = (V.length subOneArr) - 1
+  nowmax = (V.length subOnePoints) - 1
   func i x
     | i == 0      = x
     | i == nowmax = x
-    | otherwise   = (subOneArr!(i-1) &+ (6 *& x) &+ subOneArr!(i+1)) &* (1/8)
-  in V.imap func subOneArr
+    | otherwise   = (subOnePoints!(i-1) &+ (6 *& x) &+ subOnePoints!(i+1)) &* (1/8)
+  in V.imap func subOnePoints
 
 subOneTan :: (DotProd v, MultiVec v)=> SubOne v -> Vector v
 subOneTan SubOne{..} = let
-  nowmax = (V.length subOneArr) - 1
+  nowmax = (V.length subOnePoints) - 1
   func i x
     | i == 0      = front &- x
     | i == nowmax = x     &- back
     | otherwise   = front &- back
     where
-      front = subOneArr!(i+1)
-      back  = subOneArr!(i-1)
-  in V.imap (\i x -> normalize $ func i x) subOneArr
+      front = subOnePoints!(i+1)
+      back  = subOnePoints!(i-1)
+  in V.imap (\i x -> normalize $ func i x) subOnePoints
 
 -- =======================================================================================
 
 -- | Render suddivision in VTK.
 renderSubOne :: (U.Unbox v, RenderElemVTK v)=> SubOne v -> VTK v
 renderSubOne sub = let
-  (Level nl) = subOneLevel sub
-  --subNArr :: U.Vector Vec3
-  subNArr = U.convert . subOneArr $ sub
+  subNArr = U.convert . subOnePoints $ sub
   line    = U.generate (U.length subNArr) id
   in mkUGVTK "SubOne" subNArr (V.singleton line)
 

@@ -36,6 +36,7 @@ Library
                     , hammer     == 0.2.*
 
     exposed-modules:  SubZero
+                    , SubZero.Internal
 
     other-modules:    SubZero.SubOne
                     , SubZero.SubTwo
