@@ -5,32 +5,44 @@
 module SubZero
        ( mkSubOne
        , mkSubTwo
+         -- * From mesh
        , mkSubTwoFromMesh
+       , mkSubOneFromMesh
+         -- * Build mesh
+       , buildMesh
+       , mkSubOneMesh
+         -- * Common functions
        , SubZero       (..)
        , RenderSubZero (..)
 
          -- * SubOne (Lines)
        , subOneTan
        , subOneLimit
-       , SubOne ( subOnePoints
-                , subOneLevel
-                , subOneNSeg
-                )
+       , SubOne
+         ( subOneMesh
+         , subOnePoints
+         )
+       , SubOneMesh
+         ( subOnePointers
+         , subOneLevel
+         , subOneNSeg
+         )
 
          -- * SubTwo (Surfaces)
        , subTwoTans
        , subTwoLimit
        , subTwoNormals
-       , SubTwo ( subTwoMesh
-                , subTwoPoints
-                )
-       , buildMesh
-       , MeshConn ( vertexType
-                  , vertexConn
-                  , edgeConn
-                  , faceConn
-                  , controlPointers
-                  )
+       , SubTwo
+         ( subTwoMesh
+         , subTwoPoints
+         )
+       , MeshConn
+         ( vertexType
+         , vertexConn
+         , edgeConn
+         , faceConn
+         , controlPointers
+         )
        , getSubTwoFaces
        ) where
 

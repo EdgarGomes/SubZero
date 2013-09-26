@@ -2,15 +2,22 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
+-- | Subdivision schema for open lines segments (1D). The open ends are assumed crease
+-- vertices, and therefore are kept fixed during subdivision.
+-- TODO: Generalize for open and closed lines with arbitrary number of crease vertices.
 module SubZero.SubOne
-       ( SubOne ( subOnePoints
-                , subOneLevel
-                , subOneNSeg
-                )
-       , Level (..)
-       , NSegm (..)
+       ( SubOneMesh
+         ( subOnePointers
+         , subOneLevel
+         , subOneNSeg
+         )
+       , SubOne (..)
+       , Level  (..)
+       , NSegm  (..)
        , getSubOneArrSize
        , mkSubOne
+       , mkSubOneFromMesh
+       , mkSubOneMesh
        , subdivideOne
        , subdivideOneN
        , subOneTan
@@ -31,21 +38,47 @@ import           Hammer.Render.VTK.VTKRender
 newtype Level = Level Int deriving (Show, Eq, Num)
 newtype NSegm = NSegm Int deriving (Show, Eq, Num)
 
-data SubOne a = SubOne
-  { subOnePoints :: V.Vector a
-  , subOneLevel  :: Level
-  , subOneNSeg   :: NSegm
+-- | The @SubOne@ holds the mesh structure and the vertices values.
+-- Assuming that all vertices of a mesh are control points at the level 0
+-- of subdivision (no subdivision), they are fetched and stored in the
+-- @subOnePoints@ array. On the subsequent subdivision new and updated vertex
+-- are stored there as well.
+data SubOne v =
+  SubOne
+  { subOneMesh   :: SubOneMesh  -- ^ Store the topological information.
+  , subOnePoints :: Vector v    -- ^ Store the all the vertex positions.
+  } deriving (Show)
+
+-- | Holds the topological information about the subdivision line
+data SubOneMesh =
+  SubOneMesh
+  { subOnePointers :: V.Vector Int -- ^ Indirect list of control points
+  , subOneLevel    :: Level        -- ^ Current subdivision level
+  , subOneNSeg     :: NSegm        -- ^ Initial number of segments
   } deriving (Show, Eq)
 
 -- | Construct an one dimensional Subdivision for n segments at Level 0
-mkSubOne :: V.Vector v -> Maybe (SubOne v)
-mkSubOne arr
-  |V.length arr >= 2 = let
-    ns = V.length arr - 1
-    in return $ SubOne { subOnePoints   = arr
-                       , subOneLevel = Level 0
-                       , subOneNSeg  = NSegm ns }
-  | otherwise        = Nothing
+mkSubOneMesh :: V.Vector Int -> Maybe SubOneMesh
+mkSubOneMesh is
+  | V.length is < 2 = Nothing
+  | otherwise       = let
+    ns = V.length is - 1
+    in return $ SubOneMesh { subOnePointers = is
+                           , subOneLevel    = Level 0
+                           , subOneNSeg     = NSegm ns }
+
+-- | Creates a subdivision line (1D) given a array points of control points and
+-- pre-defined mesh structure for that array. Used to recalculate the mesh after updating
+-- the control points. Warning: Giving the wrong control points array (size lower that the
+-- highest control point reference in the mesh) will rise an error.
+mkSubOneFromMesh :: V.Vector v -> SubOneMesh -> SubOne v
+mkSubOneFromMesh vs mesh = let
+  ps = V.map (vs V.!) (subOnePointers mesh)
+  in SubOne mesh ps
+
+-- | Construct an one dimensional Subdivision for n segments at Level 0
+mkSubOne :: V.Vector Int -> V.Vector v -> Maybe (SubOne v)
+mkSubOne is vs = mkSubOneMesh is >>= (return . mkSubOneFromMesh vs)
 
 -- | Calculate the number of nodes in 'SubOne' for a given initial number of segments
 -- after @l@ levels of subdivisions.
@@ -55,9 +88,9 @@ getSubOneArrSize (NSegm n) (Level l) = let
   in n*each - (n-1)
 
 subdivideOne :: (MultiVec v)=> SubOne v -> SubOne v
-subdivideOne sub@SubOne{..} = let
-  levelUp  = let Level i = subOneLevel in Level (i+1)
-  newSize  = getSubOneArrSize subOneNSeg levelUp
+subdivideOne SubOne{..} = let
+  levelUp  = let Level i = subOneLevel subOneMesh in Level (i+1)
+  newSize  = getSubOneArrSize (subOneNSeg subOneMesh) levelUp
   newMax   = newSize - 1
   prevSize = V.length subOnePoints
   prevMax  = prevSize - 1
@@ -72,7 +105,9 @@ subdivideOne sub@SubOne{..} = let
       prev   = subOnePoints!previ
       prevH  = subOnePoints!(previ+1)
       previ  = i `div` 2
-  in sub {subOnePoints = V.generate newSize func, subOneLevel = levelUp}
+  newPoints = V.generate newSize func
+  newMesh   = subOneMesh { subOneLevel = levelUp }
+  in SubOne newMesh newPoints
 
 subdivideOneN :: (MultiVec v)=> Int -> SubOne v -> SubOne v
 subdivideOneN n sub
