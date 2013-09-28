@@ -597,7 +597,7 @@ tans :: Vector Vec3 -> VertexID -> VertexType
 tans ps vid vtype es eids
   | V.length looseE > 0 = error "[SubTwo] Can't calc the tan in a vertex with loose edges."
   | otherwise           = case splitOpenLoop segs of
-    ([OpenSeq a b vec], [])
+    ([OpenSeq vec], [])
       | vtype == CornerVertex && V.length vec > 1 -> let
         vs = getVS vec
         p  = ps =! vid
@@ -605,25 +605,28 @@ tans ps vid vtype es eids
         t1 = creaseAlongTan (V.head vs) p
         t2 = creaseAlongTan p (V.last vs)
         in (t1, t2)
-      | a == b && V.length vec > 1 -> let
+      | V.length vec > 1 && a == b -> let
         vs = getVS vec
         -- Crease vertex
         t1 = creaseAlongTan (V.head vs) (V.last vs)
         t2 = creaseAcrossTan (ps =! vid) vs
         in (t1, t2)
+      where
+        a = V.head vec
+        b = V.last vec
     ([], [LoopSeq vec]) -> let vs = getVS vec in (tan1 vs, tan2 vs)
     _ -> error "[SubTwo] Strange mesh topology. I can't calculate its tangent values."
   where
     getVS = V.map (ps =!) . getOtherEnds vid . V.map (es V.!)
-    segs  = getVecSegsIndirect es (V.map unEdgeID properE)
+    segs  = sortSegsIndirect es (V.map unEdgeID properE)
     (properE, looseE) = V.unstablePartition (withFace . (es =!)) eids
-
-instance SeqInv EdgeConn
 
 instance SeqSeg EdgeConn where
   type SeqUnit EdgeConn = Maybe FaceID
-  seqHead (h,_,_,_) = h
-  seqTail (_,t,_,_) = t
+  getSeqHead (h,_,_,_) = h
+  getSeqTail (_,t,_,_) = t
+  -- there is no inverse function for EdgeConn
+  -- therefore it keeps the default implementation
 
 instance SeqComp (Maybe FaceID) where
   seqComp Nothing _ = False
