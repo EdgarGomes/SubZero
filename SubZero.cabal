@@ -1,5 +1,5 @@
 name:           SubZero
-version:        0.1.0
+version:        0.1.1
 cabal-version:  >= 1.8
 build-type:     Simple
 license:        GPL-3
@@ -33,7 +33,7 @@ Library
                     , containers >= 0.5
                     , vector     >= 0.10
                     , primitive  >= 0.5
-                    , hammer     == 0.2.0
+                    , hammer     >= 0.3
 
     exposed-modules:  SubZero
                     , SubZero.Internal
@@ -51,7 +51,7 @@ Executable SubZero-test
     Main-Is:          Main.hs
     Build-depends:    SubZero
                     , base       == 4.*
-                    , hammer     == 0.2.0
+                    , hammer     >= 0.3
                     , vector     >= 0.10
     if flag(test)
        Buildable:     True
