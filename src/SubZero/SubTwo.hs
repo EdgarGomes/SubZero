@@ -54,7 +54,7 @@ import qualified Data.IntSet         as IS
 
 import Hammer.Math.Algebra
 import Hammer.Math.SortSeq
-import Hammer.Render.VTK.VTKRender
+import Hammer.VTK
 
 --import           Debug.Trace
 --dbg a = trace (">> " ++ show a) a

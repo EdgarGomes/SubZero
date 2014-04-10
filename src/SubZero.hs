@@ -50,7 +50,7 @@ import SubZero.SubOne
 import SubZero.SubTwo
 
 import Hammer.Math.Algebra
-import Hammer.Render.VTK.VTKRender
+import Hammer.VTK
 
 class SubZero s where
   subdivide  :: s -> s

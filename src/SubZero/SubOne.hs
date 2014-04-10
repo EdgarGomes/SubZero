@@ -31,7 +31,7 @@ import qualified Data.Vector.Unboxed         as U
 import           Data.Vector                 (Vector, (!))
 
 import           Hammer.Math.Algebra
-import           Hammer.Render.VTK.VTKRender
+import           Hammer.VTK
 
 -- =======================================================================================
 
