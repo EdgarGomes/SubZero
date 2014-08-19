@@ -142,7 +142,7 @@ renderSubOne :: (U.Unbox v, RenderElemVTK v)=> SubOne v -> VTK v
 renderSubOne sub = let
   subNArr = U.convert . subOnePoints $ sub
   line    = U.generate (U.length subNArr) id
-  in mkUGVTK "SubOne" subNArr (V.singleton line)
+  in mkUGVTK "SubOne" subNArr (V.singleton line) [] []
 
 instance RenderCell (U.Vector Int) where
   makeCell   = id

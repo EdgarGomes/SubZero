@@ -676,7 +676,7 @@ renderSubTwo SubTwo{..} = let
   ts = faceConn subTwoMesh
   tr :: U.Vector Vec3
   tr = V.convert $ subTwoPoints
-  in mkUGVTK "SubTwo" tr ts
+  in mkUGVTK "SubTwo" tr ts [] []
 
 instance RenderCell FaceConn where
   makeCell (VertexID a, VertexID b, VertexID c) = makeCell (a, b, c)
