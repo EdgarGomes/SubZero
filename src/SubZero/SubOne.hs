@@ -1,37 +1,40 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
+{-# LANGUAGE
+    RecordWildCards
+  , FlexibleContexts
+  , FlexibleInstances
+  , GeneralizedNewtypeDeriving
+  , TypeFamilies
+  #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- | Subdivision schema for open lines segments (1D). The open ends are assumed crease
 -- vertices, and therefore are kept fixed during subdivision.
 -- TODO: Generalize for open and closed lines with arbitrary number of crease vertices.
 module SubZero.SubOne
-       ( SubOneMesh
-         ( subOnePointers
-         , subOneLevel
-         , subOneNSeg
-         )
-       , SubOne (..)
-       , Level  (..)
-       , NSegm  (..)
-       , getSubOneArrSize
-       , mkSubOne
-       , mkSubOneFromMesh
-       , mkSubOneMesh
-       , subdivideOne
-       , subdivideOneN
-       , subOneTan
-       , subOneLimit
-       , renderSubOne
-       ) where
+  ( SubOneMesh
+    ( subOnePointers
+    , subOneLevel
+    , subOneNSeg
+    )
+  , SubOne (..)
+  , Level  (..)
+  , NSegm  (..)
+  , getSubOneArrSize
+  , mkSubOne
+  , mkSubOneFromMesh
+  , mkSubOneMesh
+  , subdivideOne
+  , subdivideOneN
+  , subOneTan
+  , subOneLimit
+  , renderSubOne
+  ) where
 
-import qualified Data.Vector                 as V
-import qualified Data.Vector.Unboxed         as U
+import Data.Vector (Vector, (!))
+import Linear.Vect
+import qualified Data.Vector         as V
+import qualified Data.Vector.Unboxed as U
 
-import           Data.Vector                 (Vector, (!))
-
-import           Hammer.Math.Algebra
-import           Hammer.VTK
+import Hammer.VTK
 
 -- =======================================================================================
 
@@ -63,9 +66,9 @@ mkSubOneMesh is
   | V.length is < 2 = Nothing
   | otherwise       = let
     ns = V.length is - 1
-    in return $ SubOneMesh { subOnePointers = is
-                           , subOneLevel    = Level 0
-                           , subOneNSeg     = NSegm ns }
+    in return SubOneMesh { subOnePointers = is
+                         , subOneLevel    = Level 0
+                         , subOneNSeg     = NSegm ns }
 
 -- | Creates a subdivision line (1D) given a array points of control points and
 -- pre-defined mesh structure for that array. Used to recalculate the mesh after updating
@@ -78,7 +81,7 @@ mkSubOneFromMesh vs mesh = let
 
 -- | Construct an one dimensional Subdivision for n segments at Level 0
 mkSubOne :: V.Vector Int -> V.Vector v -> Maybe (SubOne v)
-mkSubOne is vs = mkSubOneMesh is >>= (return . mkSubOneFromMesh vs)
+mkSubOne is vs = mkSubOneFromMesh vs <$> mkSubOneMesh is
 
 -- | Calculate the number of nodes in 'SubOne' for a given initial number of segments
 -- after @l@ levels of subdivisions.
@@ -87,7 +90,7 @@ getSubOneArrSize (NSegm n) (Level l) = let
   each = (2 ^ l) + 1
   in n*each - (n-1)
 
-subdivideOne :: (MultiVec v)=> SubOne v -> SubOne v
+subdivideOne :: (LinearMap Double m, v ~ m Double) => SubOne v -> SubOne v
 subdivideOne SubOne{..} = let
   levelUp  = let Level i = subOneLevel subOneMesh in Level (i+1)
   newSize  = getSubOneArrSize (subOneNSeg subOneMesh) levelUp
@@ -109,23 +112,23 @@ subdivideOne SubOne{..} = let
   newMesh   = subOneMesh { subOneLevel = levelUp }
   in SubOne newMesh newPoints
 
-subdivideOneN :: (MultiVec v)=> Int -> SubOne v -> SubOne v
+subdivideOneN :: (LinearMap Double m, v ~ m Double) => Int -> SubOne v -> SubOne v
 subdivideOneN n sub
   | n <= 0    = sub
   | otherwise = subdivideOneN (n-1) (sub `seq` subdivideOne sub)
 
-subOneLimit :: (MultiVec v)=> SubOne v -> Vector v
+subOneLimit :: (LinearMap Double m, v ~ m Double) => SubOne v -> Vector v
 subOneLimit SubOne{..} = let
-  nowmax = (V.length subOnePoints) - 1
+  nowmax = V.length subOnePoints - 1
   func i x
     | i == 0      = x
     | i == nowmax = x
     | otherwise   = (subOnePoints!(i-1) &+ (6 *& x) &+ subOnePoints!(i+1)) &* (1/8)
   in V.imap func subOnePoints
 
-subOneTan :: (DotProd v, MultiVec v)=> SubOne v -> Vector v
+subOneTan :: (LinearMap Double m, Norm Double m, v ~ m Double) => SubOne v -> Vector v
 subOneTan SubOne{..} = let
-  nowmax = (V.length subOnePoints) - 1
+  nowmax = V.length subOnePoints - 1
   func i x
     | i == 0      = front &- x
     | i == nowmax = x     &- back

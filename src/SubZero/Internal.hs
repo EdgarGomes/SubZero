@@ -1,4 +1,4 @@
--- | Module with some internal functions and data for advanced use. 
+-- | Module with some internal functions and data for advanced use.
 module SubZero.Internal
        ( -- * SubOne (Lines)
          Level (..)

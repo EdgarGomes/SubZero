@@ -5,7 +5,7 @@ module Main where
 
 import qualified Data.Vector as V
 
-import           Hammer.Math.Algebra
+import           Linear.Vect
 import           Hammer.VTK
 
 import           SubZero

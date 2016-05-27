@@ -25,15 +25,15 @@ Library
                  -O2
                  -funbox-strict-fields
                  -fwarn-tabs
-                 ---eventlog
                  -auto-all
                  -caf-all
 
-    build-depends:    base       == 4.*
-                    , containers >= 0.5
-                    , vector     >= 0.10
-                    , primitive  >= 0.5
-                    , hammer     >= 0.3
+    build-depends:    base        == 4.*
+                    , containers  >= 0.5
+                    , vector      >= 0.10
+                    , primitive   >= 0.5
+                    , hammer      >= 0.3
+                    , linear-vect >= 0.2
 
     exposed-modules:  SubZero
                     , SubZero.Internal
@@ -44,7 +44,6 @@ Library
     exposed:          True
     buildable:        True
     hs-source-dirs:   src
-
 
 Executable SubZero-test
     hs-source-dirs:   profile
